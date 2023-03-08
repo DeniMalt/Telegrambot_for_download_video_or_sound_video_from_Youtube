@@ -1,129 +1,74 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+import moviepy.editor
+from pytube import YouTube
+from aiogram import Bot, Dispatcher, executor, types
+import logging
+import time
+from pathlib import Path
 
-# C extensions
-*.so
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+def download_sound_of_video_or_video(url, n):
+    yt = YouTube(url)
+    streams = YouTube(url).streams
+    streams.filter(progressive=True, file_extension="mp4").desc().first().download()
+    time.sleep(20)
+    if n == 2:
+        video_file = Path(f'{yt.title}.mp4')
+        video = moviepy.editor.VideoFileClip(f'{video_file}')
+        audio = video.audio
+        audio.write_audiofile(f'{video_file.stem}.mp3')
+    return yt.title
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+TOKEN = "5774149027:AAEBHkrvIyWGc9GhJRg5QMeQ2dwAKh1wPOw"
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot=bot)
+logging.basicConfig(level=logging.INFO)
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
 
-# Translations
-*.mo
-*.pot
+@dp.message_handler(commands=['start'])
+async def start_handler(message: types.Message):
+    user_id = message.from_user.id
+    user_name = message.from_user.first_name
+    user_full_name = message.from_user.full_name
+    logging.info(f'{user_id=} {user_full_name=} {time.asctime()}')
+    await message.reply(f"Привет, {user_name}")
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
+urls = []
+keyboard_2 = types.ReplyKeyboardMarkup(resize_keyboard=True)
+keyboard_2.add("Скачать видео")
+keyboard_2.add("Скачать звук из видео")
+keyboard_2.add("Удалить выбранные видео")
+@dp.message_handler(commands=['get_video_or_sound_of_video'])
+async def start(message: types.Message):
+    await message.answer("Скиньте ссылку(-и) на видео", reply_markup=keyboard_2)
 
-# Flask stuff:
-instance/
-.webassets-cache
+    @dp.message_handler()
+    async def input_url(message: types.Message):
+        print(message.text)
+        chat_id = message.chat.id
+        if message.text.startswith == 'https://youtu.be/' or 'https://www.youtube.com/':
+            urls.append(str(message.text))
+        if message.text == "Скачать видео":
+            if len(urls) == 0:
+                await message.answer("Вы не отправляли никаких ссылок")
+            else:
+                for i in range(len(urls)):
+                   title = download_sound_of_video_or_video(urls[i], 1)
+                   with open(f"{title}.mp4", 'rb') as video:
+                       await bot.send_video(message.chat.id, video)
+        if message.text == "Скачать звук из видео":
+            if len(urls) == 0:
+                await message.answer("Вы не отправляли никаких ссылок")
+            else:
+                for i in range(len(urls)):
+                   title = download_sound_of_video_or_video(urls[i], 2)
+                   with open(f"{title}.mp3", 'rb') as sound_of_video:
+                       await bot.send_audio(message.chat.id, sound_of_video)
+        if message.text == "Удалить выбранные видео":
+            urls.clear()
+            await message.answer("Скиньте ссылку(-и) на видео", reply_markup=keyboard_2)
+        types.ReplyKeyboardRemove()
 
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
+if __name__ == '__main__':
+    executor.start_polling(dp)
+    types.ReplyKeyboardRemove()
